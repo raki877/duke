@@ -1,1 +1,1016 @@
-hi
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Duke 390 – Mountain Road</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { 
+  margin:0; 
+  overflow:hidden; 
+  background:#000; 
+  font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+canvas { 
+  display:block; 
+  touch-action: none;
+}
+
+#menu {
+  position:fixed; 
+  inset:0; 
+  background: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.95)), 
+              radial-gradient(circle at 30% 30%, #003344 0%, #001122 100%);
+  display:flex; 
+  flex-direction:column;
+  justify-content:center; 
+  align-items:center;
+  color:white; 
+  z-index:100;
+  padding: 20px;
+  text-align: center;
+  transition: opacity 0.5s ease;
+}
+
+.menu-container {
+  background: rgba(20, 20, 30, 0.85);
+  padding: 40px 30px;
+  border-radius: 20px;
+  border: 3px solid #ff6600;
+  max-width: 500px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgba(255, 102, 0, 0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 20px 50px rgba(255, 102, 0, 0.2); }
+  50% { box-shadow: 0 20px 60px rgba(255, 102, 0, 0.4); }
+}
+
+h1 {
+  font-size: 3.5rem;
+  color:#ff6600;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(255, 102, 0, 0.7);
+  letter-spacing: 3px;
+  font-weight: 900;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+  color: #ddd;
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+.controls-info {
+  background: rgba(255, 102, 0, 0.15);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  border-left: 4px solid #ff6600;
+  text-align: left;
+}
+
+.controls-info h3 {
+  color: #ff6600;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.controls-info p {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+}
+
+.icon {
+  background: rgba(255, 102, 0, 0.3);
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+button {
+  padding: 18px 50px; 
+  font-size: 1.3rem;
+  border:none; 
+  background: linear-gradient(45deg, #ff6600, #ff8c00);
+  color:white; 
+  font-weight:bold;
+  border-radius:10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+  box-shadow: 0 8px 25px rgba(255, 102, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 1px;
+}
+
+button:hover, button:active {
+  background: linear-gradient(45deg, #ff8c00, #ff6600);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(255, 102, 0, 0.6);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+#ui {
+  position:fixed; 
+  top:20px; 
+  left:20px; 
+  color:white;
+  background:rgba(10, 10, 20, 0.8); 
+  padding:20px; 
+  border-radius:15px;
+  border-left:5px solid #ff6600; 
+  pointer-events:none;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat { 
+  color:#ff6600; 
+  font-size:32px; 
+  font-weight:bold;
+  text-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+  font-family: 'Courier New', monospace;
+}
+
+.label {
+  font-size: 14px;
+  color: #aaa;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  display: block;
+  font-weight: 600;
+}
+
+#controls {
+  position: fixed;
+  bottom: 30px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.control-btn {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255, 102, 0, 0.25);
+  border: 4px solid rgba(255, 102, 0, 0.6);
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  user-select: none;
+  transition: all 0.15s;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn:active {
+  background: rgba(255, 102, 0, 0.5);
+  transform: scale(0.92);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+#gameOver {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  z-index: 150;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+#gameOver h2 {
+  font-size: 4rem;
+  color: #ff3300;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(255, 51, 0, 0.7);
+  animation: crashPulse 0.5s infinite alternate;
+}
+
+@keyframes crashPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+#gameOver p {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  color: #ddd;
+}
+
+.bike-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(10, 10, 20, 0.8);
+  padding: 20px;
+  border-radius: 15px;
+  border-left: 5px solid #ff6600;
+  pointer-events: none;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  min-width: 180px;
+}
+
+#tiltIndicator {
+  width: 120px;
+  height: 25px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-top: 12px;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+#tiltBar {
+  position: absolute;
+  height: 100%;
+  width: 30px;
+  background: linear-gradient(90deg, #ff6600, #ff8c00);
+  left: 50%;
+  transform: translateX(-50%);
+  transition: transform 0.08s ease-out;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.speed-bar {
+  position: fixed;
+  bottom: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  z-index: 50;
+}
+
+#speedFill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00ff00, #ffff00, #ff6600, #ff0000);
+  transition: width 0.3s ease-out;
+  border-radius: 8px;
+}
+
+.instructions {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  text-align: center;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px 20px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.road-sign {
+  position: absolute;
+  width: 60px;
+  height: 80px;
+  background: #ffcc00;
+  border: 3px solid #000;
+  border-radius: 5px;
+  color: #000;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <div class="menu-container">
+    <h1>DUKE 390</h1>
+    <p class="subtitle">Experience the raw power of the KTM Duke 390 on winding mountain roads</p>
+    
+    <div class="controls-info">
+      <h3>CONTROLS</h3>
+      <p><span class="icon">📱</span> Tilt device to steer</p>
+      <p><span class="icon">⬆️</span> Touch top screen to accelerate</p>
+      <p><span class="icon">◀️▶️</span> Use buttons for precise steering</p>
+      <p><span class="icon">⚠️</span> Stay on the road to avoid crashing</p>
+    </div>
+    
+    <button onclick="startGame()">START RIDE</button>
+    
+    <p style="margin-top: 25px; font-size: 0.9rem; color: #888;">
+      For immersive experience, enable device orientation
+    </p>
+  </div>
+</div>
+
+<div id="ui">
+  <span class="label">SPEED</span>
+  <span id="sp" class="stat">0</span> km/h<br>
+  <span class="label">DISTANCE</span>
+  <span id="ds" class="stat">0</span> m
+</div>
+
+<div class="bike-indicator">
+  <span class="label">STEERING</span>
+  <div id="tiltIndicator">
+    <div id="tiltBar"></div>
+  </div>
+</div>
+
+<div class="speed-bar">
+  <div id="speedFill"></div>
+</div>
+
+<div id="controls">
+  <div class="control-btn" id="leftBtn">←</div>
+  <div class="control-btn" id="rightBtn">→</div>
+</div>
+
+<div class="instructions">
+  Tap top screen to accelerate • Release to brake
+</div>
+
+<div id="gameOver">
+  <div style="background: rgba(20, 20, 30, 0.9); padding: 40px; border-radius: 20px; border: 3px solid #ff3300;">
+    <h2>CRASHED!</h2>
+    <p>Distance: <span id="finalDistance" style="color:#ff6600;">0</span> m</p>
+    <p>Top Speed: <span id="topSpeed" style="color:#ff6600;">0</span> km/h</p>
+    <p>Time: <span id="gameTime" style="color:#ff6600;">0</span> s</p>
+    <button id="restartBtn" onclick="restartGame()" style="margin-top: 30px;">RIDE AGAIN</button>
+  </div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// Game state
+let W, H, playing = false, gameOver = false;
+let speed = 0, pos = 0, playerX = 0, score = 0;
+let touchX = null, touchY = null;
+let tilt = 0;
+let topSpeed = 0;
+let gameStartTime = 0;
+let lastTime = 0;
+let offRoad = false;
+let crashTimer = 0;
+let frames = 0;
+
+// Performance optimizations
+const roadSegments = [];
+const trees = [];
+const rocks = [];
+const signs = [];
+let stars = [];
+let particles = [];
+
+// Improved road generation
+for(let i = 0; i < 10000; i++) {
+  const curve = Math.sin(i/40) * 2.5 + Math.sin(i/20) * 1.2 + Math.sin(i/80) * 0.8;
+  const hill = Math.sin(i/25) * 1200 + Math.sin(i/60) * 600;
+  
+  roadSegments.push({
+    curve: curve,
+    y: hill,
+    color: i % 2 ? "#1a1a1a" : "#222222",
+    fog: Math.min(1, i / 100)
+  });
+}
+
+// Generate stars for sky
+for(let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random() * W,
+    y: Math.random() * H * 0.5,
+    size: Math.random() * 1.5 + 0.5,
+    brightness: Math.random() * 0.5 + 0.5
+  });
+}
+
+// DOM elements
+const sp = document.getElementById("sp");
+const ds = document.getElementById("ds");
+const leftBtn = document.getElementById("leftBtn");
+const rightBtn = document.getElementById("rightBtn");
+const tiltBar = document.getElementById("tiltBar");
+const speedFill = document.getElementById("speedFill");
+const gameOverScreen = document.getElementById("gameOver");
+const finalDistance = document.getElementById("finalDistance");
+const topSpeedSpan = document.getElementById("topSpeed");
+const gameTime = document.getElementById("gameTime");
+
+// Button controls with improved response
+let leftPressed = false;
+let rightPressed = false;
+
+leftBtn.addEventListener("mousedown", () => { leftPressed = true; });
+leftBtn.addEventListener("touchstart", (e) => { 
+  e.preventDefault(); 
+  leftPressed = true; 
+});
+leftBtn.addEventListener("mouseup", () => { leftPressed = false; });
+leftBtn.addEventListener("mouseleave", () => { leftPressed = false; });
+leftBtn.addEventListener("touchend", (e) => { 
+  e.preventDefault(); 
+  leftPressed = false; 
+});
+
+rightBtn.addEventListener("mousedown", () => { rightPressed = true; });
+rightBtn.addEventListener("touchstart", (e) => { 
+  e.preventDefault(); 
+  rightPressed = true; 
+});
+rightBtn.addEventListener("mouseup", () => { rightPressed = false; });
+rightBtn.addEventListener("mouseleave", () => { rightPressed = false; });
+rightBtn.addEventListener("touchend", (e) => { 
+  e.preventDefault(); 
+  rightPressed = false; 
+});
+
+// Canvas resize
+function resize() {
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+  
+  // Regenerate stars for new size
+  stars = [];
+  for(let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.5,
+      size: Math.random() * 1.5 + 0.5,
+      brightness: Math.random() * 0.5 + 0.5
+    });
+  }
+}
+
+window.addEventListener("resize", resize);
+window.addEventListener("load", resize);
+
+// Touch controls
+canvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  touchX = e.touches[0].clientX;
+  touchY = e.touches[0].clientY;
+}, { passive: false });
+
+canvas.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  touchX = e.touches[0].clientX;
+  touchY = e.touches[0].clientY;
+}, { passive: false });
+
+canvas.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  touchX = null;
+  touchY = null;
+}, { passive: false });
+
+// Mouse controls
+canvas.addEventListener("mousedown", (e) => {
+  touchX = e.clientX;
+  touchY = e.clientY;
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (e.buttons === 1) {
+    touchX = e.clientX;
+    touchY = e.clientY;
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  touchX = null;
+  touchY = null;
+});
+
+// Gyro controls with smoothing
+let gyroTilt = 0;
+const tiltSmoothing = 0.1;
+
+if (window.DeviceOrientationEvent) {
+  window.addEventListener("deviceorientation", (e) => {
+    if (e.gamma !== null && e.beta !== null) {
+      // Combine gamma and beta for better tilt detection
+      const rawTilt = (e.gamma / 45) + (e.beta - 90) / 180;
+      gyroTilt = Math.max(-1, Math.min(1, rawTilt));
+    }
+  });
+}
+
+// Audio with fallback
+let audioContext, engineSound, gainNode, backgroundSound;
+let audioInitialized = false;
+
+function initAudio() {
+  if (audioInitialized) return;
+  
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Engine sound
+    engineSound = audioContext.createOscillator();
+    gainNode = audioContext.createGain();
+    
+    engineSound.type = "sawtooth";
+    gainNode.gain.value = 0.03;
+    
+    engineSound.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    engineSound.start();
+    audioInitialized = true;
+  } catch (e) {
+    console.log("Audio not supported");
+  }
+}
+
+function startGame() {
+  document.getElementById("menu").style.display = "none";
+  playing = true;
+  gameOver = false;
+  gameOverScreen.style.display = "none";
+  
+  // Reset game state
+  speed = 0;
+  pos = 0;
+  playerX = 0;
+  score = 0;
+  topSpeed = 0;
+  offRoad = false;
+  crashTimer = 0;
+  gameStartTime = Date.now();
+  particles = [];
+  
+  // Initialize audio
+  initAudio();
+  
+  // Resume audio context if suspended
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+}
+
+function restartGame() {
+  startGame();
+}
+
+function endGame() {
+  playing = false;
+  gameOver = true;
+  gameOverScreen.style.display = "flex";
+  
+  const distance = Math.round(pos/100);
+  const timeElapsed = Math.round((Date.now() - gameStartTime) / 1000);
+  
+  finalDistance.textContent = distance;
+  topSpeedSpan.textContent = Math.round(topSpeed);
+  gameTime.textContent = timeElapsed;
+  
+  if (engineSound) {
+    engineSound.stop();
+    audioInitialized = false;
+  }
+}
+
+// Create particle effect
+function createParticles(x, y, count, color) {
+  for(let i = 0; i < count; i++) {
+    particles.push({
+      x: x,
+      y: y,
+      vx: (Math.random() - 0.5) * 10,
+      vy: (Math.random() - 0.5) * 10 - 5,
+      life: 1.0,
+      decay: 0.02 + Math.random() * 0.03,
+      size: Math.random() * 4 + 2,
+      color: color
+    });
+  }
+}
+
+// Main game loop with delta time
+function gameLoop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const deltaTime = Math.min(timestamp - lastTime, 100) / 16.67; // Normalized to 60fps
+  lastTime = timestamp;
+  
+  // Update game state if playing
+  if (playing) {
+    // Smooth tilt with button override
+    if (leftPressed) tilt = -1;
+    else if (rightPressed) tilt = 1;
+    else {
+      // Smooth gyro input
+      tilt += (gyroTilt - tilt) * tiltSmoothing;
+      tilt = Math.max(-1, Math.min(1, tilt));
+    }
+    
+    // Update tilt indicator
+    tiltBar.style.transform = `translateX(${tilt * 45}px)`;
+    
+    // Acceleration - tap top 75% of screen
+    if (touchY !== null && touchY < H * 0.75) {
+      speed = Math.min(speed + 0.8 * deltaTime, 200);
+    } else {
+      // Natural deceleration
+      speed = Math.max(speed - 0.4 * deltaTime, 0);
+    }
+    
+    // Update top speed
+    if (speed > topSpeed) topSpeed = speed;
+    
+    // Update speed bar
+    speedFill.style.width = (speed / 200) * 100 + '%';
+    
+    // Steering with speed sensitivity
+    let steerAmount = tilt * 0.05 * (speed/200) * deltaTime;
+    playerX += steerAmount;
+    
+    // Limit player to road boundaries
+    const maxX = 0.8;
+    if (playerX < -maxX) {
+      playerX = -maxX;
+      offRoad = true;
+      createParticles(W/2 - 50, H-100, 3, "#ff3300");
+    } else if (playerX > maxX) {
+      playerX = maxX;
+      offRoad = true;
+      createParticles(W/2 + 50, H-100, 3, "#ff3300");
+    } else {
+      offRoad = false;
+    }
+    
+    // Crash detection
+    if (offRoad && speed > 40) {
+      crashTimer += deltaTime;
+      if (crashTimer > 40) {
+        createParticles(W/2, H-140, 50, "#ff6600");
+        setTimeout(() => endGame(), 300);
+      }
+    } else {
+      crashTimer = Math.max(0, crashTimer - deltaTime * 2);
+    }
+    
+    // Update position
+    pos += speed * deltaTime;
+    
+    // Update engine sound
+    if (engineSound) {
+      const baseFreq = 40 + speed * 1.2;
+      engineSound.frequency.setTargetAtTime(baseFreq, audioContext.currentTime, 0.1);
+      const gain = 0.02 + (speed/200) * 0.1;
+      gainNode.gain.setTargetAtTime(gain, audioContext.currentTime, 0.1);
+    }
+    
+    // Update particles
+    for(let i = particles.length - 1; i >= 0; i--) {
+      particles[i].x += particles[i].vx;
+      particles[i].y += particles[i].vy;
+      particles[i].vy += 0.2; // Gravity
+      particles[i].life -= particles[i].decay;
+      
+      if (particles[i].life <= 0) {
+        particles.splice(i, 1);
+      }
+    }
+    
+    // Update UI
+    sp.textContent = Math.round(speed);
+    ds.textContent = Math.round(pos/100);
+  }
+  
+  // Draw everything
+  draw();
+  
+  frames++;
+  requestAnimationFrame(gameLoop);
+}
+
+// Enhanced drawing function
+function draw() {
+  // Clear with sky gradient
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, H);
+  skyGradient.addColorStop(0, "#001133");
+  skyGradient.addColorStop(0.5, "#003355");
+  skyGradient.addColorStop(1, "#005577");
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(0, 0, W, H);
+  
+  // Draw stars
+  stars.forEach(star => {
+    ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * (0.3 + Math.sin(frames * 0.01) * 0.2)})`;
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  // Draw moon
+  ctx.fillStyle = "rgba(255, 255, 220, 0.8)";
+  ctx.beginPath();
+  ctx.arc(W - 100, 80, 40, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Draw mountains in background
+  drawMountains();
+  
+  // Draw road with perspective
+  const startSegment = Math.floor(pos/100);
+  let roadX = 0;
+  let roadCurve = 0;
+  
+  // Pre-calculate values for better performance
+  const segmentCount = 80; // Reduced for better performance
+  
+  for (let n = segmentCount; n > 0; n--) {
+    const segmentIndex = (startSegment + n) % roadSegments.length;
+    const segment = roadSegments[segmentIndex];
+    
+    // Perspective calculations
+    const perspective = n - (pos % 100) / 100;
+    const scale = Math.min(10, 1 / perspective);
+    const alpha = Math.min(1, (segmentCount - n) / 30);
+    
+    // Position calculations
+    const y = H/1.5 + (segment.y - 2000) * scale;
+    const width = W * scale * 1.5;
+    const centerX = W/2 + (roadX - playerX * 2000) * scale;
+    
+    // Skip if off screen
+    if (y > H || y < -100) {
+      roadX += roadCurve;
+      roadCurve += segment.curve;
+      continue;
+    }
+    
+    // Draw road segment with fog effect
+    const fog = Math.min(1, n / 30);
+    const roadColor = offRoad && n < 15 ? "#332222" : segment.color;
+    ctx.fillStyle = roadColor;
+    ctx.globalAlpha = alpha * (1 - fog * 0.5);
+    ctx.fillRect(centerX - width, y, width * 2, 25 * scale);
+    
+    // Draw road markings
+    if (n % 4 === 0 && n > 10) {
+      ctx.fillStyle = offRoad && n < 15 ? "#884444" : "#ffcc00";
+      const lineWidth = width * 0.12;
+      const lineHeight = 6 * scale;
+      ctx.fillRect(centerX - lineWidth/2, y + 10 * scale, lineWidth, lineHeight);
+    }
+    
+    // Draw road edges with glow effect
+    ctx.fillStyle = offRoad && n < 15 ? "#ff4444" : "#ff6600";
+    const edgeWidth = width * 0.1;
+    
+    // Left edge
+    ctx.fillRect(centerX - width, y, edgeWidth, 4 * scale);
+    // Right edge
+    ctx.fillRect(centerX + width - edgeWidth, y, edgeWidth, 4 * scale);
+    
+    // Draw roadside grass
+    if (n % 10 === 0) {
+      ctx.fillStyle = offRoad && n < 15 ? "#224422" : "#336633";
+      ctx.fillRect(centerX - width * 1.2, y, width * 0.2, 25 * scale);
+      ctx.fillRect(centerX + width, y, width * 0.2, 25 * scale);
+    }
+    
+    roadX += roadCurve;
+    roadCurve += segment.curve;
+  }
+  
+  ctx.globalAlpha = 1;
+  
+  // Draw particles
+  particles.forEach(particle => {
+    ctx.globalAlpha = particle.life;
+    ctx.fillStyle = particle.color;
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  
+  // Draw bike if playing
+  if (playing) {
+    drawBike();
+    
+    // Draw crash warning if off-road
+    if (offRoad && crashTimer > 20) {
+      const warningAlpha = 0.7 + 0.3 * Math.sin(frames * 0.1);
+      ctx.fillStyle = `rgba(255, 50, 50, ${warningAlpha})`;
+      ctx.font = "bold 36px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "#ff0000";
+      ctx.shadowBlur = 20;
+      ctx.fillText("LEAVING ROAD!", W/2, 120);
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+function drawMountains() {
+  // Draw distant mountains
+  for(let i = 0; i < 5; i++) {
+    const x = (i * 400 + pos * 0.02) % (W + 400) - 200;
+    const height = 150 + Math.sin(i * 1.5) * 50;
+    
+    const gradient = ctx.createLinearGradient(x, H - 200, x, H - 200 - height);
+    gradient.addColorStop(0, "#224466");
+    gradient.addColorStop(1, "#112244");
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(x - 200, H - 200);
+    ctx.lineTo(x, H - 200 - height);
+    ctx.lineTo(x + 200, H - 200);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawBike() {
+  ctx.save();
+  ctx.translate(W/2, H-140);
+  
+  // Bike lean based on steering and speed
+  const leanAngle = -tilt * 0.5 * (speed/200);
+  ctx.rotate(leanAngle);
+  
+  // Draw shadow
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.fillRect(-30, 25, 60, 20);
+  
+  // Bike frame (main body)
+  const frameGradient = ctx.createLinearGradient(-20, -30, 20, 30);
+  frameGradient.addColorStop(0, "#ff6600");
+  frameGradient.addColorStop(0.5, "#ff8c00");
+  frameGradient.addColorStop(1, "#ff6600");
+  
+  ctx.fillStyle = frameGradient;
+  ctx.fillRect(-20, -30, 40, 60);
+  
+  // Bike seat
+  ctx.fillStyle = "#111";
+  ctx.fillRect(-15, -40, 30, 15);
+  
+  // Fuel tank
+  ctx.fillStyle = "#222";
+  ctx.beginPath();
+  ctx.moveTo(-12, -25);
+  ctx.quadraticCurveTo(0, -35, 12, -25);
+  ctx.lineTo(12, -15);
+  ctx.lineTo(-12, -15);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Headlight with glow
+  ctx.fillStyle = "#ffffcc";
+  ctx.beginPath();
+  ctx.arc(0, -45, 15, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Headlight glow effect
+  ctx.fillStyle = "rgba(255, 255, 200, 0.3)";
+  ctx.beginPath();
+  ctx.arc(0, -45, 25, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Handlebars
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-30, -25);
+  ctx.lineTo(30, -25);
+  ctx.stroke();
+  
+  // Handlebar ends
+  ctx.fillStyle = "#ff6600";
+  ctx.beginPath();
+  ctx.arc(-30, -25, 4, 0, Math.PI * 2);
+  ctx.arc(30, -25, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Front fork
+  ctx.strokeStyle = "#444";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(0, -30);
+  ctx.lineTo(0, 10);
+  ctx.stroke();
+  
+  // Wheels
+  drawWheel(-15, 15);
+  drawWheel(15, 15);
+  
+  // Exhaust pipe
+  ctx.strokeStyle = "#555";
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(20, 0);
+  ctx.lineTo(40, -10);
+  ctx.stroke();
+  
+  // Exhaust tip
+  ctx.fillStyle = "#888";
+  ctx.fillRect(38, -15, 8, 10);
+  
+  ctx.restore();
+}
+
+function drawWheel(x, y) {
+  // Wheel rim
+  ctx.fillStyle = "#111";
+  ctx.beginPath();
+  ctx.arc(x, y, 12, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Wheel hub
+  ctx.fillStyle = "#ff6600";
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Spokes
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 2;
+  for(let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI / 4) + frames * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(angle) * 10, y + Math.sin(angle) * 10);
+    ctx.stroke();
+  }
+  
+  // Tire
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(x, y, 12, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// Prevent scrolling on mobile
+document.addEventListener('touchmove', (e) => {
+  if (e.target === canvas || e.target === leftBtn || e.target === rightBtn) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// Start the game loop
+requestAnimationFrame(gameLoop);
+
+// Auto-start for testing (remove in production)
+// setTimeout(startGame, 1000);
+
+</script>
+</body>
+</html>
