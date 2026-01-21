@@ -3,13 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Game</title>
+    <title>Hill Climb Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game">
-        <div id="score">Score: 0</div>
-        <div id="car">🚗</div>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div id="distance">Distance: 0m</div>
+            <div id="coins">Coins: 0</div>
+            <div id="fuel">
+                <div id="fuelBar"></div>
+            </div>
+        </div>
+        <div id="controls">
+            <button id="brakeBtn">⬅ BRAKE</button>
+            <button id="gasBtn">GAS ➡</button>
+        </div>
+        <div id="startScreen">
+            <h1>🚗 Hill Climb</h1>
+            <p>Use Arrow Keys or Buttons</p>
+            <button id="startBtn">START</button>
+        </div>
+        <div id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Distance: <span id="finalDistance">0</span>m</p>
+            <p>Coins: <span id="finalCoins">0</span></p>
+            <button id="restartBtn">RESTART</button>
+        </div>
     </div>
     <script src="game.js"></script>
 </body>
