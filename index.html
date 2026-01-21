@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hill Climb Racing - Exact Original Style Clone (Best 2D Canvas Version)</title>
+<style>
+  body { margin:0; overflow:hidden; background:#87CEFA; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+// =============== HILL CLIMB RACING - FAITHFUL ORIGINAL STYLE CLONE ===============
+// Road = procedural hills exactly like the original (multi-layer sine + noise)
+// Vehicle = red jeep with black roof, big black wheels, driver with white helmet
+// Physics = real suspension, torque, flipping, neck-break game over
+// Controls = ← → or A D  (accelerate / reverse-brake)
+
+const canvas = document.getElementById('c');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// ------------------- INFINITE PROCEDURAL TERRAIN (exact original feel) -------------------
+function getY(x) {
+  return H*0.65 
+    + Math.sin(x*0.003)*180 
+    + Math.sin(x*0.007 + 53)*120 
+    + Math.sin(x*0.017 + 117)*60
+    + Math.sin(x*0.001)*50;
+}
+
+// ------------------- VEHICLE (drawn exactly like original red jeep) -------------------
+class Car {
+  constructor() {
+    this.x = 300;
+    this.y = getY(this.x) - 80;
+    this.vx = 0;
+    this.vy = 0;
+    this.angle = 0;
+    this.wheelBase = 90;
+    this.wheelRadius = 32;
+    this.power = 0;
+    this.alive = true;
+
+    // driver head position (relative to car center)
+    this.headX = 15;
+    this.headY = -45;
+  }
+
+  update(keys) {
+    if (!this.alive) return;
+
+    // controls
+    this.power = 0;
+    if (keys.ArrowRight || keys['d']) this.power = 1.9;
+    if (keys.ArrowLeft  || keys['a']) this.power = -1.2;
+
+    // wheel positions
+    const backX  = this.x - Math.cos(this.angle) * this.wheelBase/2;
+    const backY  = this.y - Math.sin(this.angle) * this.wheelBase/2;
+    const frontX = this.x + Math.cos(this.angle) * this.wheelBase/2;
+    const frontY = this.y + Math.sin(this.angle) * this.wheelBase/2;
+
+    const backGroundY  = getY(backX);
+    const frontGroundY = getY(frontX);
+
+    // suspension force (spring + damping)
+    const springK = 0.45;
+    const damp   = 0.9;
+    const backForce  = (backGroundY  + this.wheelRadius - backY)  * springK;
+    const frontForce = (frontGroundY + this.wheelRadius - frontY) * springK;
+
+    this.vy += (backForce + frontForce) * 0.5 - this.vy * damp;
+
+    // torque from engine + slope
+    const slopeAngle = Math.atan2(frontGroundY - backGroundY, this.wheelBase);
+    const driveForce = this.power * 2.2;
+    const gravityDownSlope = Math.sin(slopeAngle - this.angle) * 0.6;
+
+    this.vx += Math.cos(slopeAngle) * (driveForce + gravityDownSlope);
+    this.vx *= 0.99; // air/rolling resistance
+
+    // integrate
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // update angle from wheels
+    this.angle = Math.atan2(frontGroundY - backGroundY, this.wheelBase);
+
+    // ----- death checks -----
+    // flipped
+    if (Math.abs(this.angle) > Math.PI*0.65) this.alive = false;
+    // driver head hits ground (neck break - original mechanic)
+    const headWorldX = this.x + Math.cos(this.angle) * this.headX - Math.sin(this.angle) * this.headY;
+    const headWorldY = this.y + Math.sin(this.angle) * this.headX + Math.cos(this.angle) * this.headY;
+    if (headWorldY > getY(headWorldX) + 10) this.alive = false;
+  }
+
+  draw(cameraX) {
+    ctx.save();
+    ctx.translate(this.x - cameraX, this.y);
+    ctx.rotate(this.angle);
+
+    // body (exact original red jeep shape)
+    ctx.fillStyle = '#C8102E';
+    ctx.beginPath();
+    ctx.moveTo(-65, -25);
+    ctx.lineTo(-45, -58);
+    ctx.lineTo(15, -58);
+    ctx.lineTo(35, -48);
+    ctx.lineTo(65, -30);
+    ctx.lineTo(65, 10);
+    ctx.lineTo(-65, 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // black roof (original)
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-40, -55, 50, 25);
+
+    // windows
+    ctx.fillStyle = '#88CCFF';
+    ctx.fillRect(-35, -52, 18, 18);
+    ctx.fillRect(-12, -52, 18, 18);
+
+    // wheels (big black original style)
+    ctx.fillStyle = '#111111';
+    ctx.beginPath();
+    ctx.arc(-this.wheelBase/2, 10, this.wheelRadius, 0, Math.PI*2);
+    ctx.arc( this.wheelBase/2, 10, this.wheelRadius, 0, Math.PI*2);
+    ctx.fill();
+
+    // wheel hubs
+    ctx.fillStyle = '#333333';
+    ctx.beginPath();
+    ctx.arc(-this.wheelBase/2, 10, 15, 0, Math.PI*2);
+    ctx.arc( this.wheelBase/2, 10, 15, 0, Math.PI*2);
+    ctx.fill();
+
+    // driver (white helmet + face - original style)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(15, -40, 15, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFDBB4';
+    ctx.beginPath();
+    ctx.arc(15, -35, 10, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Game Over text
+    if (!this.alive) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, H/2-100, W, 120);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 60px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME OVER - You Crashed!', W/2, H/2);
+      ctx.font = '30px Arial';
+      ctx.fillText('Press F5 to try again', W/2, H/2 + 50);
+    }
+  }
+}
+
+// ------------------- RENDERING -------------------
+const car = new Car();
+let cameraX = 0;
+
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup',   e => keys[e.key] = false);
+
+function drawBackground() {
+  // sky gradient
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#87CEFA');
+  grad.addColorStop(1, '#E0F7FA');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // distant hills (original has these)
+  ctx.fillStyle = '#556B2F';
+  for (let i = 0; i < 5; i++) {
+    const x = (i*800 - cameraX*0.2) % (W*2);
+    ctx.beginPath();
+    ctx.moveTo(x, H);
+    ctx.quadraticCurveTo(x+200, H-200, x+400, H);
+    ctx.lineTo(x+400, H);
+    ctx.fill();
+  }
+}
+
+function drawTerrain() {
+  const startX = cameraX - 200;
+  const endX = cameraX + W + 200;
+  const step = 12;
+
+  // dirt
+  ctx.fillStyle = '#8B5A2B';
+  ctx.beginPath();
+  ctx.moveTo(startX, H);
+  for (let x = startX; x <= endX; x += step) {
+    ctx.lineTo(x - cameraX, getY(x));
+  }
+  ctx.lineTo(endX - cameraX, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // grass top (thick green exactly like original)
+  ctx.strokeStyle = '#228B22';
+  ctx.lineWidth = 22;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  let first = true;
+  for (let x = startX; x <= endX; x += step) {
+    const y = getY(x) - 8;
+    if (first) { ctx.moveTo(x - cameraX, y); first = false; }
+    else ctx.lineTo(x - cameraX, y);
+  }
+  ctx.stroke();
+
+  // darker dirt lines (original detail)
+  ctx.strokeStyle = '#5D4037';
+  ctx.lineWidth = 4;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  first = true;
+  for (let x = startX; x <= endX; x += step) {
+    const y = getY(x) + 20;
+    if (first) { ctx.moveTo(x - cameraX, y); first = false; }
+    else ctx.lineTo(x - cameraX, y);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function loop() {
+  ctx.clearRect(0,0,W,H);
+
+  car.update(keys);
+
+  // camera follows car with lead
+  cameraX = car.x - W*0.35;
+
+  drawBackground();
+  drawTerrain();
+  car.draw(cameraX);
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+
+// resize handling
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+</script>
+</body>
+</html>
