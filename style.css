@@ -1,0 +1,30 @@
+* { margin: 0; padding: 0; }
+
+#game {
+    width: 400px;
+    height: 600px;
+    background: #333;
+    margin: 20px auto;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid white;
+}
+
+#score {
+    color: white;
+    padding: 10px;
+    font-family: Arial;
+    font-size: 20px;
+}
+
+#car {
+    position: absolute;
+    bottom: 20px;
+    left: 175px;
+    font-size: 40px;
+}
+
+.enemy {
+    position: absolute;
+    font-size: 40px;
+}
