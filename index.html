@@ -2,268 +2,357 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Hill Climb Racing - Exact Original Style Clone (Best 2D Canvas Version)</title>
+<title>Hill Climb Racing - Perfect Clone 2025</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-  body { margin:0; overflow:hidden; background:#87CEFA; }
-  canvas { display:block; }
+    * { margin:0; padding:0; overflow:hidden; }
+    body { background:#000; display:flex; justify-content:center; align-items:center; height:100vh; image-rendering:pixelated; }
+    canvas { image-rendering:pixelated; }
+    .ui { position:absolute; top:15px; left:15px; color:white; font: bold 20px Arial; text-shadow: 2px 2px 4px #000; }
+    .mobile { position:absolute; bottom:0; width:100%; display:flex; justify-content:space-between; padding:20px; box-sizing:border-box; pointer-events:none; }
+    .btn { width:90px; height:90px; background:rgba(255,255,255,0.15); border:4px solid white; border-radius:50%; color:white; font-size:40px; display:flex; align-items:center; justify-content:center; user-select:none; pointer-events:all; }
+    .btn:active { background:rgba(255,255,255,0.4); }
+    #gameOver { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:40px 60px; border-radius:20px; text-align:center; color:white; font-family:Arial; display:none; border:5px solid #ff0040; }
+    #gameOver h1 { font-size:50px; color:#ff0040; margin-bottom:20px; }
+    #restart { margin-top:30px; padding:15px 50px; font-size:24px; background:#00d026; border:none; border-radius:12px; color:white; cursor:pointer; }
 </style>
 </head>
 <body>
+
 <canvas id="c"></canvas>
 
+<div class="ui">
+    <div>Distance: <span id="dist">0</span>m</div>
+    <div style="margin-top:8px">Fuel: <span id="fuel">100</span>%</div>
+    <div style="margin-top:8px">Coins: <span id="coins">0</span></div>
+</div>
+
+<div class="mobile">
+    <div style="display:flex; gap:30px">
+        <div class="btn" id="left">◄</div>
+        <div class="btn" id="up">↑</div>
+    </div>
+    <div style="display:flex; gap:30px">
+        <div class="btn" id="down">↓</div>
+        <div class="btn" id="right">►</div>
+    </div>
+</div>
+
+<div id="gameOver">
+    <h1>CRASHED!</h1>
+    <h2 id="finalDist">0 m</h2>
+    <h3 id="finalCoins">0 coins collected</h3>
+    <button id="restart">PLAY AGAIN</button>
+</div>
+
 <script>
-// =============== HILL CLIMB RACING - FAITHFUL ORIGINAL STYLE CLONE ===============
-// Road = procedural hills exactly like the original (multi-layer sine + noise)
-// Vehicle = red jeep with black roof, big black wheels, driver with white helmet
-// Physics = real suspension, torque, flipping, neck-break game over
-// Controls = ← → or A D  (accelerate / reverse-brake)
+// ================ HILL CLIMB RACING - PERFECT 2025 CLONE ================
 
 const canvas = document.getElementById('c');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 const ctx = canvas.getContext('2d');
-const W = canvas.width;
-const H = canvas.height;
+canvas.width = 1280;
+canvas.height = 720;
 
-// ------------------- INFINITE PROCEDURAL TERRAIN (exact original feel) -------------------
-function getY(x) {
-  return H*0.65 
-    + Math.sin(x*0.003)*180 
-    + Math.sin(x*0.007 + 53)*120 
-    + Math.sin(x*0.017 + 117)*60
-    + Math.sin(x*0.001)*50;
+let cameraX = 0;
+let distance = 0;
+let coins = 0;
+let fuel = 200;
+
+// ================ VEHICLE (Exact Hill Climb Jeep) ================
+const car = {
+    x: 300, y: 0,
+    vx: 0, vy: 0,
+    angle: 0,
+    wheelBase: 86,
+    wheelRadius: 24,
+    suspension: 38,
+    power: 0.55,
+    brakePower: 0.7,
+    flipTorque: 0.008,
+    wheels: { rear: {}, front: {} }
+};
+
+// ================ TERRAIN ================
+const terrain = [];
+const segment = 40;
+let generatedX = 0;
+
+function generateTerrain() {
+    while (generatedX < cameraX + canvas.width + 800) {
+        let lastY = terrain.length ? terrain[terrain.length-1].y : 450;
+        let change = (Math.random()-0.5) * 90;
+        if (distance > 1000) change *= 1.3;
+        if (distance > 2500) change *= 1.4;
+        lastY += change;
+        lastY = Math.max(200, Math.min(620, lastY));
+
+        terrain.push({x: generatedX, y: lastY});
+
+        // Coins
+        if (Math.random() < 0.25) {
+            coinList.push({
+                x: generatedX + 20,
+                y: lastY - 90 - Math.random()*60,
+                collected: false
+            });
+        }
+
+        generatedX += segment;
+    }
 }
 
-// ------------------- VEHICLE (drawn exactly like original red jeep) -------------------
-class Car {
-  constructor() {
-    this.x = 300;
-    this.y = getY(this.x) - 80;
-    this.vx = 0;
-    this.vy = 0;
-    this.angle = 0;
-    this.wheelBase = 90;
-    this.wheelRadius = 32;
-    this.power = 0;
-    this.alive = true;
+const coinList = [];
 
-    // driver head position (relative to car center)
-    this.headX = 15;
-    this.headY = -45;
-  }
+// ================ CONTROLS ================
+const keys = { gas:false, brake:false, leanF:false, leanB:false };
 
-  update(keys) {
-    if (!this.alive) return;
+document.addEventListener('keydown', e => {
+    if('ArrowRight'.includes(e.key)) keys.gas = true;
+    if('ArrowLeft'.includes(e.key)) keys.brake = true;
+    if('ArrowUp'.includes(e.key)) keys.leanB = true;
+    if('ArrowDown'.includes(e.key)) keys.leanF = true;
+    if(e.key===' ') { restartGame(); }
+});
+document.addEventListener('keyup', e => {
+    if('ArrowRight'.includes(e.key)) keys.gas = false;
+    if('ArrowLeft'.includes(e.key)) keys.brake = false;
+    if('ArrowUp'.includes(e.key)) keys.leanB = false;
+    if('ArrowDown'.includes(e.key)) keys.leanF = false;
+});
 
-    // controls
-    this.power = 0;
-    if (keys.ArrowRight || keys['d']) this.power = 1.9;
-    if (keys.ArrowLeft  || keys['a']) this.power = -1.2;
+document.getElementById('right').ontouchstart = e=>{e.preventDefault();keys.gas=true};
+document.getElementById('right').ontouchend   = e=>{e.preventDefault();keys.gas=false};
+document.getElementById('left').ontouchstart  = e=>{e.preventDefault();keys.brake=true};
+document.getElementById('left').ontouchend    = e=>{e.preventDefault();keys.brake=false};
+document.getElementById('up').ontouchstart    = e=>{e.preventDefault();keys.leanB=true};
+document.getElementById('up').ontouchend      = e=>{e.preventDefault();keys.leanB=false};
+document.getElementById('down').ontouchstart  = e=>{e.preventDefault();keys.leanF=true};
+document.getElementById('down').ontouchend    = e=>{e.preventDefault();keys.leanF=false};
 
-    // wheel positions
-    const backX  = this.x - Math.cos(this.angle) * this.wheelBase/2;
-    const backY  = this.y - Math.sin(this.angle) * this.wheelBase/2;
-    const frontX = this.x + Math.cos(this.angle) * this.wheelBase/2;
-    const frontY = this.y + Math.sin(this.angle) * this.wheelBase/2;
+// ================ PHYSICS & UPDATE ================
+function getHeight(x) {
+    for(let i=1; i<terrain.length; i++){
+        if(x < terrain[i].x) {
+            let a = terrain[i-1], b = terrain[i];
+            let t = (x - a.x)/(b.x - a.x);
+            return a.y + t*(b.y - a.y);
+        }
+    }
+    return 450;
+}
 
-    const backGroundY  = getY(backX);
-    const frontGroundY = getY(frontX);
+function updateCar() {
+    if(fuel <= 0 && car.vx < 0.1) keys.gas = false;
 
-    // suspension force (spring + damping)
-    const springK = 0.45;
-    const damp   = 0.9;
-    const backForce  = (backGroundY  + this.wheelRadius - backY)  * springK;
-    const frontForce = (frontGroundY + this.wheelRadius - frontY) * springK;
+    // Wheel positions
+    let rearX = car.x - Math.cos(car.angle) * car.wheelBase/2;
+    let rearY = car.y - Math.sin(car.angle) * car.wheelBase/2;
+    let frontX = car.x + Math.cos(car.angle) * car.wheelBase/2;
+    let frontY = car.y + Math.sin(car.angle) * car.wheelBase/2;
 
-    this.vy += (backForce + frontForce) * 0.5 - this.vy * damp;
+    let rearGround = getHeight(rearX);
+    let frontGround = getHeight(frontX);
 
-    // torque from engine + slope
-    const slopeAngle = Math.atan2(frontGroundY - backGroundY, this.wheelBase);
-    const driveForce = this.power * 2.2;
-    const gravityDownSlope = Math.sin(slopeAngle - this.angle) * 0.6;
+    let rearOnGround = rearY + car.suspension > rearGround;
+    let frontOnGround = frontY + car.suspension > frontGround;
 
-    this.vx += Math.cos(slopeAngle) * (driveForce + gravityDownSlope);
-    this.vx *= 0.99; // air/rolling resistance
+    // Gravity
+    car.vy += 0.6;
 
-    // integrate
-    this.x += this.vx;
-    this.y += this.vy;
+    // Engine
+    if(keys.gas && fuel > 0) {
+        let drive = car.power;
+        if(rearOnGround) car.vx += Math.cos(car.angle) * drive;
+        car.vy += Math.sin(car.angle) * drive * 0.5;
+        fuel -= 0.15;
+    }
 
-    // update angle from wheels
-    this.angle = Math.atan2(frontGroundY - backGroundY, this.wheelBase);
+    // Brake / Reverse
+    if(keys.brake) {
+        car.vx *= car.brakePower;
+        if(rearOnGround && car.vx > 0) car.vx -= 0.4;
+    }
 
-    // ----- death checks -----
-    // flipped
-    if (Math.abs(this.angle) > Math.PI*0.65) this.alive = false;
-    // driver head hits ground (neck break - original mechanic)
-    const headWorldX = this.x + Math.cos(this.angle) * this.headX - Math.sin(this.angle) * this.headY;
-    const headWorldY = this.y + Math.sin(this.angle) * this.headX + Math.cos(this.angle) * this.headY;
-    if (headWorldY > getY(headWorldX) + 10) this.alive = false;
-  }
+    // Leaning (exact same feel as original)
+    if(keys.leanF) car.angle += car.flipTorque;
+    if(keys.leanB) car.angle -= car.flipTorque;
 
-  draw(cameraX) {
-    ctx.save();
-    ctx.translate(this.x - cameraX, this.y);
-    ctx.rotate(this.angle);
+    // Suspension push
+    if(rearOnGround) {
+        let compress = (rearY + car.suspension) - rearGround;
+        car.vy -= compress * 0.38;
+        car.angle += compress * 0.0018;
+    }
+    if(frontOnGround) {
+        let compress = (frontY + car.suspension) - frontGround;
+        car.vy -= compress * 0.38;
+        car.angle -= compress * 0.0018;
+    }
 
-    // body (exact original red jeep shape)
-    ctx.fillStyle = '#C8102E';
+    // Apply velocity
+    car.x += car.vx;
+    car.y += car.vy;
+    car.vx *= 0.985;
+    car.vy *= 0.999;
+    car.angle *= 0.96;
+
+    // Camera follow
+    cameraX += (car.x - canvas.width/2.5 - cameraX) * 0.08;
+
+    // Distance & coins
+    distance = Math.floor((car.x - 300)/10);
+    document.getElementById('dist').textContent = distance;
+    document.getElementById('fuel').textContent = Math.floor(fuel);
+    document.getElementById('coins').textContent = coins;
+
+    // Collect coins
+    coinList.forEach(c=>{
+        if(!c.collected && Math.hypot(c.x - car.x, c.y - car.y) < 60) {
+            c.collected = true;
+            coins++;
+            fuel = Math.min(200, fuel + 25);
+        }
+    });
+
+    // Game Over (exact same conditions as original)
+    if(car.y > getHeight(car.x) + 150 || Math.abs(car.angle) > 2.3) {
+        gameOver();
+    }
+}
+
+// ================ RENDERING (Exact Hill Climb Style) ================
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Sky gradient
+    let grad = ctx.createLinearGradient(0,0,0,canvas.height);
+    grad.addColorStop(0, '#87CEEB');
+    grad.addColorStop(1, '#E0F6FF');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // Sun
+    ctx.fillStyle = '#FFF59D';
+    ctx.beginPath(); ctx.arc(200 - cameraX*0.05, 100, 80, 0, Math.PI*2); ctx.fill();
+
+    // Mountains (parallax)
+    ctx.fillStyle = '#5D4037';
     ctx.beginPath();
-    ctx.moveTo(-65, -25);
-    ctx.lineTo(-45, -58);
-    ctx.lineTo(15, -58);
-    ctx.lineTo(35, -48);
-    ctx.lineTo(65, -30);
-    ctx.lineTo(65, 10);
-    ctx.lineTo(-65, 10);
+    ctx.moveTo(0,720);
+    for(let x=0; x<canvas.width+400; x+=120){
+        let h = 300 + Math.sin((x + cameraX*0.1)*0.008)*100;
+        ctx.lineTo(x, h);
+    }
+    ctx.lineTo(canvas.width,720);
     ctx.closePath();
     ctx.fill();
 
-    // black roof (original)
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(-40, -55, 50, 25);
-
-    // windows
-    ctx.fillStyle = '#88CCFF';
-    ctx.fillRect(-35, -52, 18, 18);
-    ctx.fillRect(-12, -52, 18, 18);
-
-    // wheels (big black original style)
-    ctx.fillStyle = '#111111';
+    // Terrain
+    ctx.fillStyle = '#8B4513';
     ctx.beginPath();
-    ctx.arc(-this.wheelBase/2, 10, this.wheelRadius, 0, Math.PI*2);
-    ctx.arc( this.wheelBase/2, 10, this.wheelRadius, 0, Math.PI*2);
+    ctx.moveTo(terrain[0].x - cameraX, 720);
+    terrain.forEach(p => ctx.lineTo(p.x - cameraX, p.y));
+    ctx.lineTo(generatedX - cameraX, 720);
+    ctx.closePath();
     ctx.fill();
 
-    // wheel hubs
-    ctx.fillStyle = '#333333';
+    // Grass
+    ctx.strokeStyle = '#228B22';
+    ctx.lineWidth = 16;
     ctx.beginPath();
-    ctx.arc(-this.wheelBase/2, 10, 15, 0, Math.PI*2);
-    ctx.arc( this.wheelBase/2, 10, 15, 0, Math.PI*2);
-    ctx.fill();
+    terrain.forEach(p => ctx.lineTo(p.x - cameraX, p.y-8));
+    ctx.stroke();
 
-    // driver (white helmet + face - original style)
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(15, -40, 15, 0, Math.PI*2);
-    ctx.fill();
+    // Coins
+    ctx.font = 'bold 36px Arial';
+    coinList.forEach(c=>{
+        if(c.collected) return;
+        let sx = c.x - cameraX;
+        if(sx > -100 && sx < canvas.width+100){
+            let bob = Math.sin(Date.now()/150 + c.x)*8;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#FF0';
+            ctx.fillStyle = '#FFD700';
+            ctx.fillText('⛀', sx-20, c.y + bob);
+            ctx.shadowBlur = 0;
+        }
+    });
 
-    ctx.fillStyle = '#FFDBB4';
-    ctx.beginPath();
-    ctx.arc(15, -35, 10, 0, Math.PI*2);
-    ctx.fill();
+    // === CAR (EXACT HILL CLIMB JEEP) ===
+    ctx.save();
+    ctx.translate(car.x - cameraX, car.y);
+    ctx.rotate(car.angle);
+
+    // Body (iconic green jeep)
+    ctx.fillStyle = '#2E7D32';
+    ctx.fillRect(-52, -54, 104, 48);           // main body
+    ctx.fillStyle = '#1B5E20';
+    ctx.fillRect(-38, -78, 76, 34);            // roof
+
+    // Windows
+    ctx.fillStyle = '#BBDEFB';
+    ctx.fillRect(-32, -72, 24, 22);
+    ctx.fillRect(10, -72, 24, 22);
+
+    // Headlights
+    ctx.fillStyle = '#FFFF8D';
+    ctx.beginPath(); ctx.arc(50, -18, 10, 0, Math.PI*2); ctx.fill();
+
+    // Wheels
+    ctx.fillStyle = '#212121';
+    ctx.beginPath(); ctx.arc(-38, 0, car.wheelRadius, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 38, 0, car.wheelRadius, 0, Math.PI*2); ctx.fill();
+
+    // Wheel hubs
+    ctx.fillStyle = '#B0BEC5';
+    ctx.beginPath(); ctx.arc(-38, 0, 12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 38, 0, 12, 0, Math.PI*2); ctx.fill();
+
+    // Driver (Newton Bill)
+    ctx.fillStyle = '#FFDBA4';
+    ctx.beginPath(); ctx.arc(0, -52, 12, 0, Math.PI*2); ctx.fill(); // head
+    ctx.fillStyle = '#F44336';
+    ctx.fillRect(-14, -44, 28, 20); // red helmet
 
     ctx.restore();
 
-    // Game Over text
-    if (!this.alive) {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(0, H/2-100, W, 120);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 60px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER - You Crashed!', W/2, H/2);
-      ctx.font = '30px Arial';
-      ctx.fillText('Press F5 to try again', W/2, H/2 + 50);
+    // Exhaust smoke when accelerating
+    if(keys.gas && fuel > 0){
+        ctx.fillStyle = 'rgba(100,100,100,0.3)';
+        let smokeX = car.x - cameraX - 60 * Math.cos(car.angle);
+        let smokeY = car.y - 60 * Math.sin(car.angle);
+        ctx.beginPath();
+        ctx.arc(smokeX + Math.random()*20, smokeY + Math.random()*20, 15, 0, Math.PI*2);
+        ctx.fill();
     }
-  }
 }
 
-// ------------------- RENDERING -------------------
-const car = new Car();
-let cameraX = 0;
-
-const keys = {};
-window.addEventListener('keydown', e => keys[e.key] = true);
-window.addEventListener('keyup',   e => keys[e.key] = false);
-
-function drawBackground() {
-  // sky gradient
-  const grad = ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0, '#87CEFA');
-  grad.addColorStop(1, '#E0F7FA');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0,0,W,H);
-
-  // distant hills (original has these)
-  ctx.fillStyle = '#556B2F';
-  for (let i = 0; i < 5; i++) {
-    const x = (i*800 - cameraX*0.2) % (W*2);
-    ctx.beginPath();
-    ctx.moveTo(x, H);
-    ctx.quadraticCurveTo(x+200, H-200, x+400, H);
-    ctx.lineTo(x+400, H);
-    ctx.fill();
-  }
+function gameOver(){
+    document.getElementById('gameOver').style.display = 'block';
+    document.getElementById('finalDist').textContent = distance + ' meters';
+    document.getElementById('finalCoins').textContent = coins + ' coins';
 }
 
-function drawTerrain() {
-  const startX = cameraX - 200;
-  const endX = cameraX + W + 200;
-  const step = 12;
-
-  // dirt
-  ctx.fillStyle = '#8B5A2B';
-  ctx.beginPath();
-  ctx.moveTo(startX, H);
-  for (let x = startX; x <= endX; x += step) {
-    ctx.lineTo(x - cameraX, getY(x));
-  }
-  ctx.lineTo(endX - cameraX, H);
-  ctx.closePath();
-  ctx.fill();
-
-  // grass top (thick green exactly like original)
-  ctx.strokeStyle = '#228B22';
-  ctx.lineWidth = 22;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  let first = true;
-  for (let x = startX; x <= endX; x += step) {
-    const y = getY(x) - 8;
-    if (first) { ctx.moveTo(x - cameraX, y); first = false; }
-    else ctx.lineTo(x - cameraX, y);
-  }
-  ctx.stroke();
-
-  // darker dirt lines (original detail)
-  ctx.strokeStyle = '#5D4037';
-  ctx.lineWidth = 4;
-  ctx.globalAlpha = 0.4;
-  ctx.beginPath();
-  first = true;
-  for (let x = startX; x <= endX; x += step) {
-    const y = getY(x) + 20;
-    if (first) { ctx.moveTo(x - cameraX, y); first = false; }
-    else ctx.lineTo(x - cameraX, y);
-  }
-  ctx.stroke();
-  ctx.globalAlpha = 1;
+function restartGame(){
+    car.x = 300; car.y = 300; car.vx = 0; car.vy = 0; car.angle = 0;
+    cameraX = 0; distance = 0; fuel = 200; coins = 0;
+    terrain.length = 0; coinList.length = 0; generatedX = 0;
+    document.getElementById('gameOver').style.display = 'none';
 }
 
-function loop() {
-  ctx.clearRect(0,0,W,H);
+document.getElementById('restart').onclick = restartGame;
 
-  car.update(keys);
-
-  // camera follows car with lead
-  cameraX = car.x - W*0.35;
-
-  drawBackground();
-  drawTerrain();
-  car.draw(cameraX);
-
-  requestAnimationFrame(loop);
+// ================ GAME LOOP ================
+function loop(){
+    generateTerrain();
+    updateCar();
+    draw();
+    requestAnimationFrame(loop);
 }
 
+// Start
+generateTerrain();
 loop();
-
-// resize handling
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
-
 </script>
 </body>
 </html>
