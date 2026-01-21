@@ -4,7 +4,162 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hill Climb Game</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            border-radius: 10px;
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #fuel {
+            width: 150px;
+            height: 25px;
+            background: #333;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid white;
+        }
+
+        #fuelBar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, #ff4444, #ffaa00, #44ff44);
+            transition: width 0.1s;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        #controls button {
+            padding: 20px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        #brakeBtn {
+            background: linear-gradient(to bottom, #ff6b6b, #ee5a5a);
+            color: white;
+        }
+
+        #gasBtn {
+            background: linear-gradient(to bottom, #51cf66, #40c057);
+            color: white;
+        }
+
+        #controls button:active {
+            transform: scale(0.95);
+        }
+
+        #startScreen, #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            border-radius: 10px;
+        }
+
+        #startScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        #gameOver h2 {
+            font-size: 36px;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+
+        #startScreen p, #gameOver p {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        #startBtn, #restartBtn {
+            margin-top: 20px;
+            padding: 15px 50px;
+            font-size: 24px;
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        #startBtn:hover, #restartBtn:hover {
+            transform: scale(1.05);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 820px) {
+            #gameContainer {
+                width: 100vw;
+                height: 100vh;
+            }
+            
+            #gameCanvas {
+                border-radius: 0;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="gameContainer">
@@ -25,13 +180,387 @@
             <p>Use Arrow Keys or Buttons</p>
             <button id="startBtn">START</button>
         </div>
-        <div id="gameOver">
+        <div id="gameOver" class="hidden">
             <h2>Game Over!</h2>
             <p>Distance: <span id="finalDistance">0</span>m</p>
             <p>Coins: <span id="finalCoins">0</span></p>
             <button id="restartBtn">RESTART</button>
         </div>
     </div>
-    <script src="game.js"></script>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        let gameRunning = false;
+        let distance = 0;
+        let coins = 0;
+        let fuel = 100;
+        let cameraX = 0;
+
+        const terrainSegments = [];
+        const segmentWidth = 50;
+        let terrainLength = 0;
+        const coinPositions = [];
+
+        const car = {
+            x: 150,
+            y: 300,
+            width: 80,
+            height: 35,
+            wheelRadius: 15,
+            angle: 0,
+            velocityX: 0,
+            velocityY: 0,
+            angularVelocity: 0,
+            onGround: false
+        };
+
+        const GRAVITY = 0.4;
+        const ACCELERATION = 0.15;
+        const BRAKE_POWER = 0.2;
+        const MAX_SPEED = 12;
+        const FRICTION = 0.99;
+        const ANGULAR_FRICTION = 0.95;
+
+        let gasPressed = false;
+        let brakePressed = false;
+
+        function generateTerrain(startX, count) {
+            for (let i = 0; i < count; i++) {
+                const x = startX + i * segmentWidth;
+                const baseHeight = 400;
+                
+                const hill1 = Math.sin(x * 0.008) * 80;
+                const hill2 = Math.sin(x * 0.015) * 40;
+                const hill3 = Math.sin(x * 0.003) * 100;
+                
+                const y = baseHeight + hill1 + hill2 + hill3;
+                
+                terrainSegments.push({ x, y });
+                
+                if (Math.random() < 0.1 && x > 300) {
+                    coinPositions.push({
+                        x: x,
+                        y: y - 50,
+                        collected: false
+                    });
+                }
+            }
+            terrainLength = startX + count * segmentWidth;
+        }
+
+        function getTerrainHeight(x) {
+            for (let i = 0; i < terrainSegments.length - 1; i++) {
+                const seg1 = terrainSegments[i];
+                const seg2 = terrainSegments[i + 1];
+                
+                if (x >= seg1.x && x < seg2.x) {
+                    const t = (x - seg1.x) / (seg2.x - seg1.x);
+                    return seg1.y + (seg2.y - seg1.y) * t;
+                }
+            }
+            return 400;
+        }
+
+        function getTerrainAngle(x) {
+            const h1 = getTerrainHeight(x - 10);
+            const h2 = getTerrainHeight(x + 10);
+            return Math.atan2(h2 - h1, 20);
+        }
+
+        function updateCar() {
+            if (!gameRunning) return;
+            
+            car.velocityY += GRAVITY;
+            
+            const carBottomY = car.y + car.wheelRadius;
+            const terrainY = getTerrainHeight(car.x);
+            
+            car.onGround = false;
+            
+            if (carBottomY >= terrainY) {
+                car.y = terrainY - car.wheelRadius;
+                car.velocityY = 0;
+                car.onGround = true;
+                
+                const targetAngle = getTerrainAngle(car.x);
+                car.angularVelocity += (targetAngle - car.angle) * 0.1;
+            }
+            
+            if (car.onGround) {
+                if (gasPressed && fuel > 0) {
+                    car.velocityX += Math.cos(car.angle) * ACCELERATION;
+                    fuel -= 0.1;
+                }
+                if (brakePressed) {
+                    car.velocityX -= Math.cos(car.angle) * BRAKE_POWER;
+                }
+            }
+            
+            car.velocityX = Math.max(-MAX_SPEED / 2, Math.min(MAX_SPEED, car.velocityX));
+            car.velocityX *= FRICTION;
+            car.angularVelocity *= ANGULAR_FRICTION;
+            
+            car.x += car.velocityX;
+            car.y += car.velocityY;
+            car.angle += car.angularVelocity;
+            
+            if (car.x < 50) {
+                car.x = 50;
+                car.velocityX = 0;
+            }
+            
+            distance = Math.max(distance, Math.floor((car.x - 150) / 10));
+            
+            if (Math.abs(car.angle) > Math.PI / 2) {
+                endGame();
+            }
+            
+            if (fuel <= 0) {
+                fuel = 0;
+                endGame();
+            }
+            
+            if (car.x > terrainLength - 1000) {
+                generateTerrain(terrainLength, 50);
+            }
+            
+            coinPositions.forEach(coin => {
+                if (!coin.collected) {
+                    const dx = car.x - coin.x;
+                    const dy = car.y - coin.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < 40) {
+                        coin.collected = true;
+                        coins++;
+                        fuel = Math.min(100, fuel + 10);
+                    }
+                }
+            });
+        }
+
+        function drawSky() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#E0F6FF');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            for (let i = 0; i < 5; i++) {
+                const cloudX = ((i * 300 - cameraX * 0.3) % (canvas.width + 200)) - 100;
+                ctx.beginPath();
+                ctx.arc(cloudX, 80 + i * 20, 30, 0, Math.PI * 2);
+                ctx.arc(cloudX + 25, 70 + i * 20, 25, 0, Math.PI * 2);
+                ctx.arc(cloudX + 50, 80 + i * 20, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawTerrain() {
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            
+            for (const seg of terrainSegments) {
+                const screenX = seg.x - cameraX;
+                if (screenX > -100 && screenX < canvas.width + 100) {
+                    ctx.lineTo(screenX, seg.y);
+                }
+            }
+            
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.closePath();
+            
+            const gradient = ctx.createLinearGradient(0, 300, 0, canvas.height);
+            gradient.addColorStop(0, '#4a7c23');
+            gradient.addColorStop(0.3, '#3d6b1e');
+            gradient.addColorStop(1, '#2d4a15');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            ctx.strokeStyle = '#2d4a15';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        function drawCoins() {
+            coinPositions.forEach(coin => {
+                if (coin.collected) return;
+                
+                const screenX = coin.x - cameraX;
+                if (screenX > -50 && screenX < canvas.width + 50) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, coin.y, 20, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(screenX, coin.y, 15, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFA500';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#FFA500';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('$', screenX, coin.y);
+                }
+            });
+        }
+
+        function drawCar() {
+            const screenX = car.x - cameraX;
+            
+            ctx.save();
+            ctx.translate(screenX, car.y);
+            ctx.rotate(car.angle);
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(5, 20, 40, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(-40, -20);
+            ctx.lineTo(40, -20);
+            ctx.lineTo(40, 5);
+            ctx.lineTo(-40, 5);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.moveTo(-15, -40);
+            ctx.lineTo(25, -40);
+            ctx.lineTo(30, -20);
+            ctx.lineTo(-20, -20);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#85c1e9';
+            ctx.beginPath();
+            ctx.moveTo(-10, -38);
+            ctx.lineTo(20, -38);
+            ctx.lineTo(24, -22);
+            ctx.lineTo(-14, -22);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(25, 5, car.wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7f8c8d';
+            ctx.beginPath();
+            ctx.arc(25, 5, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(-25, 5, car.wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7f8c8d';
+            ctx.beginPath();
+            ctx.arc(-25, 5, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function updateCamera() {
+            const targetX = car.x - canvas.width / 3;
+            cameraX += (targetX - cameraX) * 0.1;
+        }
+
+        function updateUI() {
+            document.getElementById('distance').textContent = `Distance: ${distance}m`;
+            document.getElementById('coins').textContent = `Coins: ${coins}`;
+            document.getElementById('fuelBar').style.width = `${fuel}%`;
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawSky();
+            updateCar();
+            updateCamera();
+            drawTerrain();
+            drawCoins();
+            drawCar();
+            updateUI();
+            
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function startGame() {
+            car.x = 150;
+            car.y = 300;
+            car.velocityX = 0;
+            car.velocityY = 0;
+            car.angle = 0;
+            car.angularVelocity = 0;
+            
+            distance = 0;
+            coins = 0;
+            fuel = 100;
+            cameraX = 0;
+            
+            terrainSegments.length = 0;
+            coinPositions.length = 0;
+            terrainLength = 0;
+            
+            generateTerrain(0, 100);
+            
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOver').classList.add('hidden');
+            
+            gameRunning = true;
+            gameLoop();
+        }
+
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('finalDistance').textContent = distance;
+            document.getElementById('finalCoins').textContent = coins;
+            document.getElementById('gameOver').classList.remove('hidden');
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'd') gasPressed = true;
+            if (e.key === 'ArrowLeft' || e.key === 'a') brakePressed = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'd') gasPressed = false;
+            if (e.key === 'ArrowLeft' || e.key === 'a') brakePressed = false;
+        });
+
+        const gasBtn = document.getElementById('gasBtn');
+        const brakeBtn = document.getElementById('brakeBtn');
+
+        gasBtn.addEventListener('mousedown', () => gasPressed = true);
+        gasBtn.addEventListener('mouseup', () => gasPressed = false);
+        gasBtn.addEventListener('mouseleave', () => gasPressed = false);
+        gasBtn.addEventListener('touchstart', (e) => { e.preventDefault(); gasPressed = true; });
+        gasBtn.addEventListener('touchend', () => gasPressed = false);
+
+        brakeBtn.addEventListener('mousedown', () => brakePressed = true);
+        brakeBtn.addEventListener('mouseup', () => brakePressed = false);
+        brakeBtn.addEventListener('mouseleave', () => brakePressed = false);
+        brakeBtn.addEventListener('touchstart', (e) => { e.preventDefault(); brakePressed = true; });
+        brakeBtn.addEventListener('touchend', () => brakePressed = false);
+    </script>
 </body>
 </html>
